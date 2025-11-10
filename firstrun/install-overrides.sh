@@ -69,5 +69,21 @@ else
   echo "$BINDINGS_SOURCE" >> "$BINDINGS"
 fi
 
+# ~/.config/hypr/hyprsunset.conf
+SUNSET="$HOME/.config/hypr/hyprsunset.conf"
+SUNSET_SOURCE="source = $DOTFILES/.config/hypr/hyprsunset.conf"
+
+if [ ! -f "$SUNSET" ]; then
+  echo "hyprsunset.conf not found at $SUNSET"
+  exit 1
+fi
+
+if grep -Fxq "$SUNSET_SOURCE" "$SUNSET"; then
+  echo "Reference to custom hyprsunset.conf already exists."
+else
+  echo "" >> "$SUNSET"
+  echo "$SUNSET_SOURCE" >> "$SUNSET"
+fi
+
 echo "Finished!"
 
