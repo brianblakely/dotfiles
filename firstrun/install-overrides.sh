@@ -2,104 +2,46 @@
 
 set -e
 
-SCRIPTDIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 DOTFILES="$HOME/dotfiles"
+
+ensure_reference() {
+  target_file="$1"
+  source_line="$2"
+  missing_message="$3"
+  existing_message="$4"
+
+  if [ ! -f "$target_file" ]; then
+    echo "$missing_message"
+    exit 1
+  fi
+
+  if grep -Fxq "$source_line" "$target_file"; then
+    echo "$existing_message"
+  else
+    printf "\n%s\n" "$source_line" >> "$target_file"
+  fi
+}
 
 # ~/.inputrc
 INPUTRC="$HOME/.inputrc"
 INPUTRC_INCLUDE="\$include $DOTFILES/.inputrc"
+ensure_reference \
+  "$INPUTRC" \
+  "$INPUTRC_INCLUDE" \
+  ".inputrc not found at $INPUTRC" \
+  "Reference to custom .inputrc already exists."
 
-if [ ! -f "$INPUTRC" ]; then
-  echo ".inputrc not found at $INPUTRC"
-  exit 1
-fi
+# ~/.config/hypr/*.conf
+for hypr_config in autostart input bindings looknfeel hyprsunset; do
+  target_file="$HOME/.config/hypr/${hypr_config}.conf"
+  source_line="source = $DOTFILES/.config/hypr/${hypr_config}.conf"
 
-if grep -Fxq "$INPUTRC_INCLUDE" "$INPUTRC"; then
-  echo "Reference to custom .inputrc already exists."
-else
-  echo "" >> "$INPUTRC"
-  echo "$INPUTRC_INCLUDE" >> "$INPUTRC"
-fi
-
-# ~/.config/hypr/autostart.conf
-AUTOSTART="$HOME/.config/hypr/autostart.conf"
-AUTOSTART_SOURCE="source = $DOTFILES/.config/hypr/autostart.conf"
-
-if [ ! -f "$AUTOSTART" ]; then
-  echo "autostart.conf not found at $AUTOSTART"
-  exit 1
-fi
-
-if grep -Fxq "$AUTOSTART_SOURCE" "$AUTOSTART"; then
-  echo "Reference to custom autostart.conf already exists."
-else
-  echo "" >> "$AUTOSTART"
-  echo "$AUTOSTART_SOURCE" >> "$AUTOSTART"
-fi
-
-# ~/.config/hypr/input.conf
-INPUT="$HOME/.config/hypr/input.conf"
-INPUT_SOURCE="source = $DOTFILES/.config/hypr/input.conf"
-
-if [ ! -f "$INPUT" ]; then
-  echo "input.conf not found at $INPUT"
-  exit 1
-fi
-
-if grep -Fxq "$INPUT_SOURCE" "$INPUT"; then
-  echo "Reference to custom input.conf already exists."
-else
-  echo "" >> "$INPUT"
-  echo "$INPUT_SOURCE" >> "$INPUT"
-fi
-
-# ~/.config/hypr/bindings.conf
-BINDINGS="$HOME/.config/hypr/bindings.conf"
-BINDINGS_SOURCE="source = $DOTFILES/.config/hypr/bindings.conf"
-
-if [ ! -f "$BINDINGS" ]; then
-  echo "bindings.conf not found at $BINDINGS"
-  exit 1
-fi
-
-if grep -Fxq "$BINDINGS_SOURCE" "$BINDINGS"; then
-  echo "Reference to custom bindings.conf already exists."
-else
-  echo "" >> "$BINDINGS"
-  echo "$BINDINGS_SOURCE" >> "$BINDINGS"
-fi
-
-# ~/.config/hypr/looknfeel.conf
-LOOKNFEEL="$HOME/.config/hypr/looknfeel.conf"
-LOOKNFEEL_SOURCE="source = $DOTFILES/.config/hypr/looknfeel.conf"
-
-if [ ! -f "$LOOKNFEEL" ]; then
-  echo "looknfeel.conf not found at $LOOKNFEEL"
-  exit 1
-fi
-
-if grep -Fxq "$LOOKNFEEL_SOURCE" "$LOOKNFEEL"; then
-  echo "Reference to custom looknfeel.conf already exists."
-else
-  echo "" >> "$LOOKNFEEL"
-  echo "$LOOKNFEEL_SOURCE" >> "$LOOKNFEEL"
-fi
-
-# ~/.config/hypr/hyprsunset.conf
-SUNSET="$HOME/.config/hypr/hyprsunset.conf"
-SUNSET_SOURCE="source = $DOTFILES/.config/hypr/hyprsunset.conf"
-
-if [ ! -f "$SUNSET" ]; then
-  echo "hyprsunset.conf not found at $SUNSET"
-  exit 1
-fi
-
-if grep -Fxq "$SUNSET_SOURCE" "$SUNSET"; then
-  echo "Reference to custom hyprsunset.conf already exists."
-else
-  echo "" >> "$SUNSET"
-  echo "$SUNSET_SOURCE" >> "$SUNSET"
-fi
+  ensure_reference \
+    "$target_file" \
+    "$source_line" \
+    "${hypr_config}.conf not found at $target_file" \
+    "Reference to custom ${hypr_config}.conf already exists."
+done
 
 # ~/.config/waybar/config.jsonc
 WAYBAR="$HOME/.config/waybar/config.jsonc"
