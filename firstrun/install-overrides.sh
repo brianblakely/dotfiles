@@ -69,6 +69,22 @@ else
   echo "$BINDINGS_SOURCE" >> "$BINDINGS"
 fi
 
+# ~/.config/hypr/looknfeel.conf
+LOOKNFEEL="$HOME/.config/hypr/looknfeel.conf"
+LOOKNFEEL_SOURCE="source = $DOTFILES/.config/hypr/looknfeel.conf"
+
+if [ ! -f "$LOOKNFEEL" ]; then
+  echo "looknfeel.conf not found at $LOOKNFEEL"
+  exit 1
+fi
+
+if grep -Fxq "$LOOKNFEEL_SOURCE" "$LOOKNFEEL"; then
+  echo "Reference to custom looknfeel.conf already exists."
+else
+  echo "" >> "$LOOKNFEEL"
+  echo "$LOOKNFEEL_SOURCE" >> "$LOOKNFEEL"
+fi
+
 # ~/.config/hypr/hyprsunset.conf
 SUNSET="$HOME/.config/hypr/hyprsunset.conf"
 SUNSET_SOURCE="source = $DOTFILES/.config/hypr/hyprsunset.conf"
