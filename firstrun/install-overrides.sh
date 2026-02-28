@@ -85,5 +85,65 @@ else
   echo "$SUNSET_SOURCE" >> "$SUNSET"
 fi
 
+# ~/.config/waybar/config.jsonc
+WAYBAR="$HOME/.config/waybar/config.jsonc"
+WAYBAR_INCLUDE="$DOTFILES/.config/waybar/config.jsonc"
+
+if [ ! -f "$WAYBAR" ]; then
+  echo "waybar config not found at $WAYBAR"
+  exit 1
+fi
+
+if [ ! -f "$WAYBAR_INCLUDE" ]; then
+  echo "custom waybar config not found at $WAYBAR_INCLUDE"
+  exit 1
+fi
+
+if grep -Fq "\"$WAYBAR_INCLUDE\"" "$WAYBAR"; then
+  echo "Reference to custom waybar config already exists."
+elif grep -Eq '"include"[[:space:]]*:[[:space:]]*\[' "$WAYBAR"; then
+  TMPFILE="$(mktemp)"
+
+  awk -v inc_path="$WAYBAR_INCLUDE" '
+    BEGIN { inserted = 0 }
+    {
+      if (!inserted && $0 ~ /"include"[[:space:]]*:[[:space:]]*\[/) {
+        print $0
+        if (getline nextline) {
+          if (nextline ~ /^[[:space:]]*\]/) {
+            print "    \"" inc_path "\""
+            print nextline
+          } else {
+            print "    \"" inc_path "\"," 
+            print nextline
+          }
+        }
+        inserted = 1
+        next
+      }
+      print $0
+    }
+  ' "$WAYBAR" > "$TMPFILE"
+
+  mv "$TMPFILE" "$WAYBAR"
+  echo "Added reference to custom waybar config."
+else
+  TMPFILE="$(mktemp)"
+
+  awk -v inc_path="$WAYBAR_INCLUDE" '
+    BEGIN { inserted = 0 }
+    {
+      print $0
+      if (!inserted && $0 ~ /\{/) {
+        print "  \"include\": [\"" inc_path "\"],"
+        inserted = 1
+      }
+    }
+  ' "$WAYBAR" > "$TMPFILE"
+
+  mv "$TMPFILE" "$WAYBAR"
+  echo "Added reference to custom waybar config."
+fi
+
 echo "Finished!"
 
