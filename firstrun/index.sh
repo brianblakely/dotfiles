@@ -1,5 +1,7 @@
 #!/bin/sh
 
+set -e
+
 # Install other packages
 . ./install-brave.sh
 
