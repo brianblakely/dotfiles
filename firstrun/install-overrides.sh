@@ -43,6 +43,15 @@ for hypr_config in autostart input bindings looknfeel hyprsunset; do
     "Reference to custom ${hypr_config}.conf already exists."
 done
 
+# ~/.config/hypr/hyprland.conf (source other.conf)
+HYPERLAND_MAIN="$HOME/.config/hypr/hyprland.conf"
+OTHER_SOURCE_LINE="source = $DOTFILES/.config/hypr/other.conf"
+ensure_reference \
+  "$HYPERLAND_MAIN" \
+  "$OTHER_SOURCE_LINE" \
+  "hyprland.conf not found at $HYPERLAND_MAIN" \
+  "Reference to custom other.conf already exists."
+
 # ~/.config/waybar/config.jsonc
 WAYBAR="$HOME/.config/waybar/config.jsonc"
 WAYBAR_INCLUDE="$DOTFILES/.config/waybar/config.jsonc"
