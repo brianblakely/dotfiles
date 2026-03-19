@@ -1,3 +1,16 @@
 {
-  "exclusive": false
+  "exclusive": false,
+
+  // Rememeber to add "wlr/taskbar" to the list of modules in the "modules-left" section of your config!
+  "wlr/taskbar": {
+    "format": "{icon}",
+    "icon-size": 18,
+    "tooltip-format": "{title}",
+    "on-click": "activate",
+    "on-click-right": "fullscreen",
+    "on-click-middle": "close",
+
+    // show tasks from *all* monitors/outputs:
+    "all-outputs": true
+  }
 }
