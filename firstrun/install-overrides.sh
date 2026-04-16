@@ -112,5 +112,45 @@ else
   echo "Added reference to custom waybar config."
 fi
 
+# ~/.config/waybar/style.css
+WAYBAR_STYLE="$HOME/.config/waybar/style.css"
+WAYBAR_STYLE_INCLUDE="$DOTFILES/.config/waybar/style.css"
+WAYBAR_STYLE_LINE="@import \"$WAYBAR_STYLE_INCLUDE\";"
+
+if [ ! -f "$WAYBAR_STYLE" ]; then
+  echo "waybar style not found at $WAYBAR_STYLE"
+  exit 1
+fi
+
+if [ ! -f "$WAYBAR_STYLE_INCLUDE" ]; then
+  echo "custom waybar style not found at $WAYBAR_STYLE_INCLUDE"
+  exit 1
+fi
+
+if grep -Fq "$WAYBAR_STYLE_LINE" "$WAYBAR_STYLE"; then
+  echo "Reference to custom waybar style already exists."
+else
+  TMPFILE="$(mktemp)"
+
+  if grep -Eq '^@[[:space:]]*import([[:space:]]|$)' "$WAYBAR_STYLE"; then
+    awk -v inc_line="$WAYBAR_STYLE_LINE" '
+      BEGIN { inserted = 0 }
+      {
+        print $0
+        if (!inserted && $0 ~ /^@[[:space:]]*import([[:space:]]|$)/) {
+          print inc_line
+          inserted = 1
+        }
+      }
+    ' "$WAYBAR_STYLE" > "$TMPFILE"
+  else
+    printf "%s\n\n" "$WAYBAR_STYLE_LINE" > "$TMPFILE"
+    cat "$WAYBAR_STYLE" >> "$TMPFILE"
+  fi
+
+  mv "$TMPFILE" "$WAYBAR_STYLE"
+  echo "Added reference to custom waybar style."
+fi
+
 echo "Finished!"
 

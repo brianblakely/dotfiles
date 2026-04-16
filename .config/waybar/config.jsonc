@@ -12,5 +12,10 @@
 
     // show tasks from *all* monitors/outputs:
     "all-outputs": true
+  },
+  "custom/waycal": {
+    "format": "󰃭",
+    "on-click": "pkill -x waycal || waycal",
+    "tooltip-format": "Calendar"
   }
 }

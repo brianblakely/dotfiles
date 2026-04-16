@@ -1,0 +1,11 @@
+#custom-waycal {
+  background-color: @background;
+  color: @foreground;
+  padding: 0 10px;
+  margin: 5px 0;
+  border-radius: 16px;
+  font-size: 12px;
+}
+#custom-waycal:hover {
+  background-color: alpha(@background, 0.7);
+}
