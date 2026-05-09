@@ -6,6 +6,9 @@
   margin: 0;
   opacity: 0.78;
 }
+#taskbar button:hover {
+  background: none;
+}
 
 #custom-waycal {
   background-color: @background;
