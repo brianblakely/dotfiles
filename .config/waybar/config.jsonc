@@ -4,7 +4,8 @@
   // Rememeber to add "wlr/taskbar" to the list of modules in the "modules-left" section of your config!
   "wlr/taskbar": {
     "format": "{icon}",
-    "icon-size": 18,
+    "icon-size": 12,
+    "icon-theme": ["nord-mono-light"],
     "tooltip-format": "{title}",
     "on-click": "activate",
     "on-click-right": "fullscreen",

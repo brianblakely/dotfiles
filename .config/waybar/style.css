@@ -1,3 +1,12 @@
+#taskbar {
+  padding: 0 5px;
+}
+#taskbar button {
+  padding: 0 5px;
+  margin: 0;
+  opacity: 0.78;
+}
+
 #custom-waycal {
   background-color: @background;
   color: @foreground;
