@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Duration to display waybar (in seconds)
-DISPLAY_DURATION=1.5
+DISPLAY_DURATION=2.0
 
 # Check if waybar is already running
 if ! pgrep -x waybar >/dev/null; then
