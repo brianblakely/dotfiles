@@ -1,0 +1,9 @@
+approvals_reviewer = "auto_review"
+notify = ["$HOME/.local/bin/codex-notify"]
+
+[plugins."github@openai-curated"]
+enabled = true
+
+[tui]
+vim_mode_default = true
+

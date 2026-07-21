@@ -1,0 +1,19 @@
+#!/bin/bash
+
+payload="${1:-}"
+if [[ -z "$payload" ]]; then
+  payload='{}'
+fi
+
+message=$(
+  jq -r '."last-assistant-message" // "Turn complete"' <<<"$payload" |
+    tr '\n' ' ' |
+    cut -c1-240
+)
+
+omarchy-notification-send \
+  "󰚩" \
+  "Codex finished" \
+  "$message" \
+  -u normal \
+  -a "Codex"
