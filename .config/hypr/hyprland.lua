@@ -106,10 +106,6 @@ o.bind("SUPER + SHIFT + W", "Omawrite", { launch = "omawrite" })
 hl.unbind("XF86Calculator")
 o.bind("XF86Calculator", "Omacalc", { launch = "omacalc" })
 
--- `ln -sfnT "$HOME/Projects/my-current-project" "$HOME/Projects/main"`
-hl.unbind("SUPER + code:61")
-o.bind("SUPER + code:61", "Main project", { launch = [[xdg-terminal-exec --dir="$HOME/Projects/main"]] })
-
 -- Extra mouse buttons.
 hl.unbind("mouse:277")
 o.bind("mouse:277", "Show OmaHUD", "omarchy-shell shell summon b.omahud")
