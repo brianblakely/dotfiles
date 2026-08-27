@@ -1,0 +1,54 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+repo_root=${HOME:?HOME is not set}/dotfiles
+
+if [[ ! -f $repo_root/flake.nix ]]; then
+  printf 'Expected the dotfiles repository at: %s\n' "$repo_root" >&2
+  exit 1
+fi
+
+if ! command -v nix >/dev/null 2>&1; then
+  cat >&2 <<'EOF'
+Nix is not installed. Install it with the official multi-user installer:
+
+  sh <(curl -L https://nixos.org/nix/install) --daemon
+
+Start a new shell after installation, then rerun this script.
+EOF
+  exit 1
+fi
+
+# This machine's Nix installation may not enable the modern CLI globally.
+export NIX_CONFIG="${NIX_CONFIG:+$NIX_CONFIG
+}extra-experimental-features = nix-command flakes"
+
+if ! nix store info >/dev/null 2>&1; then
+  cat >&2 <<'EOF'
+The Nix binary exists, but its store is not available. For Arch's nix package,
+initialize and enable the packaged daemon once:
+
+  sudo systemd-tmpfiles --create /usr/lib/tmpfiles.d/nix-daemon.conf
+  sudo systemctl enable --now nix-daemon.service
+
+Then rerun this script.
+EOF
+  exit 1
+fi
+
+home_manager_command=$(command -v home-manager || true)
+if [[ -z $home_manager_command && -x $HOME/.nix-profile/bin/home-manager ]]; then
+  home_manager_command=$HOME/.nix-profile/bin/home-manager
+elif [[ -z $home_manager_command && -x $HOME/.local/state/nix/profile/bin/home-manager ]]; then
+  home_manager_command=$HOME/.local/state/nix/profile/bin/home-manager
+fi
+
+if [[ -n $home_manager_command ]]; then
+  exec "$home_manager_command" switch "$@" --impure --flake "path:$repo_root#default"
+fi
+
+# Bootstrap only the CLI. The resulting activation installs the version pinned
+# by this repository into the user's Home Manager generation.
+exec nix run --impure "path:$repo_root#home-manager" -- \
+  switch "$@" --impure --flake "path:$repo_root#default"

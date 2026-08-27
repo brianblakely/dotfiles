@@ -1,0 +1,243 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+program_name=${0##*/}
+dry_run=false
+temporary_output=
+temporary_legacy_lines=
+
+cleanup() {
+  if [[ -n $temporary_output ]]; then
+    rm -f -- "$temporary_output"
+  fi
+  if [[ -n $temporary_legacy_lines ]]; then
+    rm -f -- "$temporary_legacy_lines"
+  fi
+}
+trap cleanup EXIT
+
+fail() {
+  printf '%s: %s\n' "$program_name" "$*" >&2
+  exit 1
+}
+
+usage() {
+  cat <<EOF
+Usage:
+  $program_name [--dry-run]
+  $program_name [--dry-run] all
+  $program_name [--dry-run] ensure-block CANONICAL SOURCE BEGIN BODY END [LEGACY_LINE ...]
+
+With no command, reconcile all external configuration files for \$HOME/dotfiles.
+The ensure-block command exposes the reusable single-file operation.
+EOF
+}
+
+require_ordinary_file() {
+  local path=$1
+  local description=$2
+
+  if [[ ! -e $path ]]; then
+    fail "$description does not exist: $path"
+  fi
+  if [[ ! -f $path || -L $path ]]; then
+    fail "$description must be an ordinary file, not a symlink: $path"
+  fi
+}
+
+ensure_managed_block() {
+  local canonical_file=$1
+  local repo_source_file=$2
+  local begin_marker=$3
+  local block_body=$4
+  local end_marker=$5
+  shift 5
+  local -a requested_legacy_lines=("$@")
+  local -a legacy_lines=()
+  local legacy_line
+
+  require_ordinary_file "$canonical_file" "canonical file"
+  require_ordinary_file "$repo_source_file" "referenced repo file"
+
+  if [[ -z $begin_marker || -z $end_marker || $begin_marker == "$end_marker" ]]; then
+    fail "BEGIN and END markers must be non-empty and different"
+  fi
+  if [[ $begin_marker == *$'\n'* || $end_marker == *$'\n'* ]]; then
+    fail "BEGIN and END markers must each fit on one line"
+  fi
+
+  # A bare copy of the desired body is the legacy format used by the old
+  # installer. Remove it while constructing the marked replacement.
+  for legacy_line in "${requested_legacy_lines[@]}"; do
+    if [[ -n $legacy_line ]]; then
+      legacy_lines+=("$legacy_line")
+    fi
+  done
+  if (( ${#legacy_lines[@]} == 0 )); then
+    legacy_lines=("$block_body")
+  fi
+
+  local canonical_directory canonical_name
+  canonical_directory=$(dirname -- "$canonical_file")
+  canonical_name=$(basename -- "$canonical_file")
+  temporary_output=$(mktemp "$canonical_directory/.${canonical_name}.home-manager.XXXXXX") ||
+    fail "could not create a temporary file beside: $canonical_file"
+  temporary_legacy_lines=$(mktemp "$canonical_directory/.${canonical_name}.legacy-lines.XXXXXX") ||
+    fail "could not create a temporary file beside: $canonical_file"
+
+  printf '%s\n' "${legacy_lines[@]}" > "$temporary_legacy_lines"
+
+  if ! awk -v begin_marker="$begin_marker" -v end_marker="$end_marker" '
+    NR == FNR {
+      legacy[$0] = 1
+      next
+    }
+
+    $0 == begin_marker {
+      if (inside_block) {
+        malformed = 1
+      }
+      inside_block = 1
+      next
+    }
+
+    $0 == end_marker {
+      if (!inside_block) {
+        malformed = 1
+      }
+      inside_block = 0
+      next
+    }
+
+    inside_block {
+      next
+    }
+
+    $0 in legacy {
+      next
+    }
+
+    {
+      print
+    }
+
+    END {
+      if (inside_block || malformed) {
+        exit 65
+      }
+    }
+  ' "$temporary_legacy_lines" "$canonical_file" > "$temporary_output"; then
+    fail "managed block markers are malformed in: $canonical_file"
+  fi
+
+  {
+    printf '%s\n' "$begin_marker"
+    printf '%s\n' "$block_body"
+    printf '%s\n' "$end_marker"
+  } >> "$temporary_output"
+
+  if cmp -s -- "$canonical_file" "$temporary_output"; then
+    printf 'unchanged: %s\n' "$canonical_file"
+    rm -f -- "$temporary_output" "$temporary_legacy_lines"
+    temporary_output=
+    temporary_legacy_lines=
+    return
+  fi
+
+  if $dry_run; then
+    printf 'would reconcile: %s\n' "$canonical_file"
+    rm -f -- "$temporary_output" "$temporary_legacy_lines"
+    temporary_output=
+    temporary_legacy_lines=
+    return
+  fi
+
+  chmod --reference="$canonical_file" -- "$temporary_output"
+  mv -f -- "$temporary_output" "$canonical_file"
+  temporary_output=
+  rm -f -- "$temporary_legacy_lines"
+  temporary_legacy_lines=
+  printf 'reconciled: %s\n' "$canonical_file"
+}
+
+reconcile_all() {
+  local home_directory=${HOME:-}
+  if [[ -z $home_directory ]]; then
+    fail 'HOME is not set'
+  fi
+
+  local repo_root="$home_directory/dotfiles"
+  if [[ ! -d $repo_root ]]; then
+    fail "expected the dotfiles repository at: $repo_root"
+  fi
+
+  local hyprland_body='dofile((os.getenv("HOME") or "") .. "/dotfiles/.config/hypr/hyprland.lua")'
+  ensure_managed_block \
+    "$home_directory/.config/hypr/hyprland.lua" \
+    "$repo_root/.config/hypr/hyprland.lua" \
+    '-- BEGIN home-manager: dotfiles hyprland import' \
+    "$hyprland_body" \
+    '-- END home-manager: dotfiles hyprland import' \
+    "$hyprland_body"
+
+  local hyprsunset_body='source = $HOME/dotfiles/.config/hypr/hyprsunset.conf'
+  ensure_managed_block \
+    "$home_directory/.config/hypr/hyprsunset.conf" \
+    "$repo_root/.config/hypr/hyprsunset.conf" \
+    '# BEGIN home-manager: dotfiles hyprsunset include' \
+    "$hyprsunset_body" \
+    '# END home-manager: dotfiles hyprsunset include' \
+    "$hyprsunset_body" \
+    "source = $repo_root/.config/hypr/hyprsunset.conf"
+
+  local readline_body='$include $HOME/dotfiles/.inputrc'
+  ensure_managed_block \
+    "$home_directory/.inputrc" \
+    "$repo_root/.inputrc" \
+    '# BEGIN home-manager: dotfiles readline include' \
+    "$readline_body" \
+    '# END home-manager: dotfiles readline include' \
+    "$readline_body" \
+    "\$include $repo_root/.inputrc"
+
+  local bash_body='source "$HOME/dotfiles/.bashrc"'
+  ensure_managed_block \
+    "$home_directory/.bashrc" \
+    "$repo_root/.bashrc" \
+    '# BEGIN home-manager: dotfiles bash include' \
+    "$bash_body" \
+    '# END home-manager: dotfiles bash include' \
+    "$bash_body" \
+    "source \"$repo_root/.bashrc\""
+}
+
+if [[ ${1:-} == --dry-run ]]; then
+  dry_run=true
+  shift
+fi
+
+case ${1:-all} in
+  all)
+    if (( $# > 1 )); then
+      usage >&2
+      exit 2
+    fi
+    reconcile_all
+    ;;
+  ensure-block)
+    shift
+    if (( $# < 5 )); then
+      usage >&2
+      exit 2
+    fi
+    ensure_managed_block "$@"
+    ;;
+  -h|--help)
+    usage
+    ;;
+  *)
+    usage >&2
+    exit 2
+    ;;
+esac
