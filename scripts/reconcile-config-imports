@@ -5,14 +5,10 @@ set -euo pipefail
 program_name=${0##*/}
 dry_run=false
 temporary_output=
-temporary_legacy_lines=
 
 cleanup() {
   if [[ -n $temporary_output ]]; then
     rm -f -- "$temporary_output"
-  fi
-  if [[ -n $temporary_legacy_lines ]]; then
-    rm -f -- "$temporary_legacy_lines"
   fi
 }
 trap cleanup EXIT
@@ -27,7 +23,7 @@ usage() {
 Usage:
   $program_name [--dry-run]
   $program_name [--dry-run] all
-  $program_name [--dry-run] ensure-block CANONICAL SOURCE BEGIN BODY END [LEGACY_LINE ...]
+  $program_name [--dry-run] ensure-block CANONICAL SOURCE BEGIN BODY END
 
 With no command, reconcile all external configuration files for \$HOME/dotfiles.
 The ensure-block command exposes the reusable single-file operation.
@@ -52,10 +48,6 @@ ensure_managed_block() {
   local begin_marker=$3
   local block_body=$4
   local end_marker=$5
-  shift 5
-  local -a requested_legacy_lines=("$@")
-  local -a legacy_lines=()
-  local legacy_line
 
   require_ordinary_file "$canonical_file" "canonical file"
   require_ordinary_file "$repo_source_file" "referenced repo file"
@@ -67,33 +59,16 @@ ensure_managed_block() {
     fail "BEGIN and END markers must each fit on one line"
   fi
 
-  # A bare copy of the desired body is the legacy format used by the old
-  # installer. Remove it while constructing the marked replacement.
-  for legacy_line in "${requested_legacy_lines[@]}"; do
-    if [[ -n $legacy_line ]]; then
-      legacy_lines+=("$legacy_line")
-    fi
-  done
-  if (( ${#legacy_lines[@]} == 0 )); then
-    legacy_lines=("$block_body")
-  fi
-
   local canonical_directory canonical_name
   canonical_directory=$(dirname -- "$canonical_file")
   canonical_name=$(basename -- "$canonical_file")
   temporary_output=$(mktemp "$canonical_directory/.${canonical_name}.home-manager.XXXXXX") ||
     fail "could not create a temporary file beside: $canonical_file"
-  temporary_legacy_lines=$(mktemp "$canonical_directory/.${canonical_name}.legacy-lines.XXXXXX") ||
-    fail "could not create a temporary file beside: $canonical_file"
 
-  printf '%s\n' "${legacy_lines[@]}" > "$temporary_legacy_lines"
-
-  if ! awk -v begin_marker="$begin_marker" -v end_marker="$end_marker" '
-    NR == FNR {
-      legacy[$0] = 1
-      next
-    }
-
+  if ! awk \
+    -v begin_marker="$begin_marker" \
+    -v block_body="$block_body" \
+    -v end_marker="$end_marker" '
     $0 == begin_marker {
       if (inside_block) {
         malformed = 1
@@ -114,7 +89,7 @@ ensure_managed_block() {
       next
     }
 
-    $0 in legacy {
+    $0 == block_body {
       next
     }
 
@@ -127,7 +102,7 @@ ensure_managed_block() {
         exit 65
       }
     }
-  ' "$temporary_legacy_lines" "$canonical_file" > "$temporary_output"; then
+  ' "$canonical_file" > "$temporary_output"; then
     fail "managed block markers are malformed in: $canonical_file"
   fi
 
@@ -139,25 +114,21 @@ ensure_managed_block() {
 
   if cmp -s -- "$canonical_file" "$temporary_output"; then
     printf 'unchanged: %s\n' "$canonical_file"
-    rm -f -- "$temporary_output" "$temporary_legacy_lines"
+    rm -f -- "$temporary_output"
     temporary_output=
-    temporary_legacy_lines=
     return
   fi
 
   if $dry_run; then
     printf 'would reconcile: %s\n' "$canonical_file"
-    rm -f -- "$temporary_output" "$temporary_legacy_lines"
+    rm -f -- "$temporary_output"
     temporary_output=
-    temporary_legacy_lines=
     return
   fi
 
   chmod --reference="$canonical_file" -- "$temporary_output"
   mv -f -- "$temporary_output" "$canonical_file"
   temporary_output=
-  rm -f -- "$temporary_legacy_lines"
-  temporary_legacy_lines=
   printf 'reconciled: %s\n' "$canonical_file"
 }
 
@@ -178,8 +149,7 @@ reconcile_all() {
     "$repo_root/.config/hypr/hyprland.lua" \
     '-- BEGIN home-manager: dotfiles hyprland import' \
     "$hyprland_body" \
-    '-- END home-manager: dotfiles hyprland import' \
-    "$hyprland_body"
+    '-- END home-manager: dotfiles hyprland import'
 
   local hyprsunset_body='source = $HOME/dotfiles/.config/hypr/hyprsunset.conf'
   ensure_managed_block \
@@ -187,9 +157,7 @@ reconcile_all() {
     "$repo_root/.config/hypr/hyprsunset.conf" \
     '# BEGIN home-manager: dotfiles hyprsunset include' \
     "$hyprsunset_body" \
-    '# END home-manager: dotfiles hyprsunset include' \
-    "$hyprsunset_body" \
-    "source = $repo_root/.config/hypr/hyprsunset.conf"
+    '# END home-manager: dotfiles hyprsunset include'
 
   local readline_body='$include $HOME/dotfiles/.inputrc'
   ensure_managed_block \
@@ -197,9 +165,7 @@ reconcile_all() {
     "$repo_root/.inputrc" \
     '# BEGIN home-manager: dotfiles readline include' \
     "$readline_body" \
-    '# END home-manager: dotfiles readline include' \
-    "$readline_body" \
-    "\$include $repo_root/.inputrc"
+    '# END home-manager: dotfiles readline include'
 
   local bash_body='source "$HOME/dotfiles/.bashrc"'
   ensure_managed_block \
@@ -207,9 +173,7 @@ reconcile_all() {
     "$repo_root/.bashrc" \
     '# BEGIN home-manager: dotfiles bash include' \
     "$bash_body" \
-    '# END home-manager: dotfiles bash include' \
-    "$bash_body" \
-    "source \"$repo_root/.bashrc\""
+    '# END home-manager: dotfiles bash include'
 }
 
 if [[ ${1:-} == --dry-run ]]; then
@@ -227,7 +191,7 @@ case ${1:-all} in
     ;;
   ensure-block)
     shift
-    if (( $# < 5 )); then
+    if (( $# != 5 )); then
       usage >&2
       exit 2
     fi

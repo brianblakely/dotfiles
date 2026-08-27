@@ -39,8 +39,7 @@ ensure_block() {
     "$1" "$2" \
     '# BEGIN home-manager: test import' \
     'include repo.conf' \
-    '# END home-manager: test import' \
-    'include repo.conf' >/dev/null
+    '# END home-manager: test import' >/dev/null
 }
 
 make_case() {
@@ -141,11 +140,11 @@ if find "$test_root" -type l -print -quit | grep -q .; then
 fi
 pass 'ordinary-file type and reasonable permissions are preserved'
 
-# The unmarked line used by the old installer is migrated into one block.
-case_dir=$(make_case legacy-line)
+# A bare duplicate of the desired import is folded into the managed block.
+case_dir=$(make_case duplicate-import)
 printf 'before\ninclude repo.conf\nafter\ninclude repo.conf\n' > "$case_dir/canonical.conf"
 ensure_block "$case_dir/canonical.conf" "$case_dir/repo.conf"
-[[ $(grep -Fc 'include repo.conf' "$case_dir/canonical.conf") == 1 ]] || fail 'legacy imports were duplicated'
-pass 'legacy unmarked imports are deduplicated'
+[[ $(grep -Fc 'include repo.conf' "$case_dir/canonical.conf") == 1 ]] || fail 'imports were duplicated'
+pass 'bare duplicate imports are folded into the managed block'
 
 printf '1..%d\n' "$test_count"
