@@ -3,7 +3,6 @@
 set -euo pipefail
 
 repo_root=${HOME:?HOME is not set}/dotfiles
-script_directory=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
 
 if [[ ! -d $repo_root ]]; then
   printf 'Expected the dotfiles repository at: %s\n' "$repo_root" >&2
@@ -11,7 +10,6 @@ if [[ ! -d $repo_root ]]; then
 fi
 
 "$repo_root/scripts/home-manager-switch"
-"$script_directory/install-via-omarchy.sh"
 
 cat <<EOF
 
