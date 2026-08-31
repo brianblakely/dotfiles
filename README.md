@@ -35,7 +35,11 @@
    sudo install -D -m 0644 \
      "$HOME/dotfiles/etc/systemd/system/systemd-poweroff.service.d/override.conf" \
      /etc/systemd/system/systemd-poweroff.service.d/override.conf
+   sudo install -D -m 0644 \
+     "$HOME/dotfiles/etc/keyd/default.conf" \
+     /etc/keyd/default.conf
    sudo systemctl daemon-reload
+   sudo systemctl enable --now keyd
    ```
 
 ## Syncthing settings

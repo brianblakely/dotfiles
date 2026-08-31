@@ -13,7 +13,7 @@ hl.monitor({
 -- Input, appearance, and XWayland.
 hl.config({
   input = {
-    kb_options = "caps:escape,compose:menu",
+    kb_options = "compose:menu",
   }
 })
 

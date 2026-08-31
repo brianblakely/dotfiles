@@ -15,6 +15,10 @@ let
       command = [ "pkg" "add" "syncthing" ];
     }
     {
+      package = "keyd";
+      command = [ "pkg" "add" "keyd" ];
+    }
+    {
       package = "brave-bin";
       command = [ "install" "browser" "brave" ];
     }

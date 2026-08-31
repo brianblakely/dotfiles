@@ -20,5 +20,9 @@ Root-owned system configuration is intentionally separate. Review and apply it w
   sudo install -D -m 0644 \
     "$repo_root/etc/systemd/system/systemd-poweroff.service.d/override.conf" \
     /etc/systemd/system/systemd-poweroff.service.d/override.conf
+  sudo install -D -m 0644 \
+    "$repo_root/etc/keyd/default.conf" \
+    /etc/keyd/default.conf
   sudo systemctl daemon-reload
+  sudo systemctl enable --now keyd
 EOF
