@@ -28,6 +28,24 @@ let
     }
   ];
 
+  omarchyWebApplications = [
+    {
+      name = "GitHub";
+      url = "https://github.com/";
+      icon = "github";
+    }
+    {
+      name = "Google Drive";
+      url = "https://drive.google.com/";
+      icon = "google-drive";
+    }
+    {
+      name = "Twitch";
+      url = "https://www.twitch.tv/";
+      icon = "twitch";
+    }
+  ];
+
   reconcileSyncthing = pkgs.writeShellApplication {
     name = "reconcile-syncthing";
     runtimeInputs = with pkgs; [ coreutils curl jq libxml2 xmlstarlet ];
@@ -366,10 +384,51 @@ in {
         "$omarchy_command" install chromium google account
     '';
 
+  # Install web apps through Omarchy so their launchers use the configured
+  # Chromium-family browser. Reconcile stale launchers and missing icons while
+  # avoiding network requests when each web app is already correct.
+  home.activation.installOmarchyWebApplications =
+    lib.hm.dag.entryAfter [ "installOmarchyApplications" ] ''
+      omarchy_path="/usr/share/omarchy/bin:/usr/local/sbin:/usr/local/bin:/usr/bin:$PATH"
+      omarchy_command=$(PATH="$omarchy_path" command -v omarchy || true)
+      if [[ -z "$omarchy_command" ]]; then
+        printf 'Home Manager activation: omarchy command not found\n' >&2
+        exit 1
+      fi
+
+      install_omarchy_web_application() {
+        local name="$1"
+        local url="$2"
+        local icon="$3"
+        local desktop_file="$HOME/.local/share/applications/$name.desktop"
+        local icon_file="$HOME/.local/share/icons/hicolor/256x256/apps/$icon.png"
+        local exec_line="Exec=omarchy-launch-webapp $url"
+        local quoted_exec_line="Exec=omarchy-launch-webapp \"$url\""
+
+        if [[ -f "$desktop_file" && -f "$icon_file" ]] &&
+          ${pkgs.gnugrep}/bin/grep -Fxq "Name=$name" "$desktop_file" &&
+          ${pkgs.gnugrep}/bin/grep -Fxq "Icon=$icon" "$desktop_file" &&
+          { ${pkgs.gnugrep}/bin/grep -Fxq "$exec_line" "$desktop_file" ||
+            ${pkgs.gnugrep}/bin/grep -Fxq "$quoted_exec_line" "$desktop_file"; }; then
+          echo "$name web app is already installed, skipping..."
+        else
+          # An empty icon reference asks Omarchy to fetch and install the
+          # site's icon under the deterministic name derived above.
+          run ${pkgs.coreutils}/bin/env PATH="$omarchy_path" \
+            "$omarchy_command" webapp install "$name" "$url" ""
+        fi
+      }
+
+      ${lib.concatMapStringsSep "\n" (application:
+        "install_omarchy_web_application "
+        + lib.escapeShellArgs [ application.name application.url application.icon ]
+      ) omarchyWebApplications}
+    '';
+
   # Reconcile Syncthing through its REST API while retaining the Arch package,
   # local device keys, and current systemd enablement state.
   home.activation.configureSyncthing =
-    lib.hm.dag.entryAfter [ "installOmarchyApplications" ] ''
+    lib.hm.dag.entryAfter [ "installOmarchyWebApplications" ] ''
       run ${reconcileSyncthing}/bin/reconcile-syncthing
     '';
 }
