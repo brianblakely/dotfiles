@@ -276,6 +276,12 @@ in {
   home.file."${homeDirectory}/.local/state/.keep".enable = false;
 
   programs.home-manager.enable = true;
+  news.display = "silent";
+
+  xdg.configFile = {
+    "wireplumber/wireplumber.conf.d/51-disable-microphone-playback.conf".source =
+      ./.config/wireplumber/wireplumber.conf.d/51-disable-microphone-playback.conf;
+  };
 
   # Omarchy owns Hyprland and the desktop. Home Manager reconciles the final
   # imports in Omarchy's mutable canonical customization files.
