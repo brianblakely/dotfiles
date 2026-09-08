@@ -36,7 +36,6 @@ o.bind("SUPER + SLASH", "Everything", "omarchy-shell shell toggle b.everything")
 -- Applications.
 hl.unbind("SUPER + SHIFT + F")
 o.bind("SUPER + SHIFT + F", "Files", { tui = "yazi" })
-o.bind("SUPER + SHIFT + ALT + F", "File manager", { omarchy = "nautilus" })
 hl.unbind("SUPER + SHIFT + M")
 o.bind("SUPER + SHIFT + M", "Music", { webapp = "https://music.amazon.com/", focus = true })
 hl.unbind("SUPER + SHIFT + Y")
