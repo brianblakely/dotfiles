@@ -7,5 +7,5 @@ enabled = true
 vim_mode_default = true
 
 [tui.keymap.chat]
-edit_queued_message = ["shift-up", "shift-left"]
+edit_queued_message = ["ctrl-up", "ctrl-left"]
 increase_reasoning_effort = "alt-."
